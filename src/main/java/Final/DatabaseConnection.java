@@ -8,7 +8,7 @@ public class DatabaseConnection {
     public static void main(String[] args) {
         String url = "jdbc:mysql://localhost:3306/login_app_db";
         String usuario = "root";
-        String password = "root";
+        String password = "admin";
 
         try {
             Connection connection = DriverManager.getConnection(url, usuario, password);
