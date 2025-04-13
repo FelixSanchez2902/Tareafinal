@@ -2,7 +2,7 @@ package Final;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
+import java.sql.SQLException;
 
 public class Login extends JPanel {
     private JTextField txtUsuario;
@@ -44,13 +44,15 @@ public class Login extends JPanel {
             return;
         }
 
-        for (Usuario u : sistema.getUsuarios()) {
-            if (u.getNombreUsuario().equals(usuario) && u.getContraseña().equals(contraseña)) {
+        try {
+            if (DatabaseConnection.validateUser(usuario, contraseña)) {
                 sistema.mostrarPanelPrincipal();
-                return;
+            } else {
+                JOptionPane.showMessageDialog(this, "Usuario o contraseña incorrectos");
             }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al validar usuario: " + e.getMessage());
         }
-        JOptionPane.showMessageDialog(this, "Usuario o contraseña incorrectos");
     }
 
     private void mostrarRegistro() {
@@ -107,16 +109,28 @@ public class Login extends JPanel {
             return;
         }
 
-        Usuario nuevoUsuario = new Usuario(
-                txtNombreUsuarioReg.getText(),
-                txtNombreReg.getText(),
-                txtApellidoReg.getText(),
-                txtTelefonoReg.getText(),
-                txtCorreoReg.getText(),
-                contraseña
-        );
 
-        sistema.getUsuarios().add(nuevoUsuario);
-        JOptionPane.showMessageDialog(this, "Usuario registrado con éxito");
+        try {
+            if (DatabaseConnection.getUserByUsername(txtNombreUsuarioReg.getText()) != null) {
+                JOptionPane.showMessageDialog(this, "El nombre de usuario ya está en uso");
+                return;
+            }
+
+            // Registrar en la base de datos
+            Usuario nuevoUsuario = new Usuario(
+                    txtNombreUsuarioReg.getText(),
+                    txtNombreReg.getText(),
+                    txtApellidoReg.getText(),
+                    txtTelefonoReg.getText(),
+                    txtCorreoReg.getText(),
+                    contraseña
+            );
+            DatabaseConnection.registerUser(nuevoUsuario);
+            sistema.getUsuarios().add(nuevoUsuario);
+
+            JOptionPane.showMessageDialog(this, "Usuario registrado con éxito");
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al registrar usuario: " + e.getMessage());
+        }
     }
 }

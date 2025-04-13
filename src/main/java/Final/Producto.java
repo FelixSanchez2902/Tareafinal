@@ -17,9 +17,7 @@ public class Producto {
         this.cantidadDisponible = cantidadDisponible;
     }
 
-    public Producto(String nombre, String marca, String categoria, double precio, int cantidadDisponible) {
-        this(-1, nombre, marca, categoria, precio, cantidadDisponible); // -1 indica ID no asignado aún
-    }
+
 
     // Getters y Setters
     public int getId() { return id; }

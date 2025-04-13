@@ -2,14 +2,15 @@ package Final;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
-import java.util.ArrayList;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 
 public class GestionProductos extends JFrame {
     private SistemaGestion sistema;
     private JList<Producto> listaProductos;
     private DefaultListModel<Producto> modelProductos;
-    private JTextField txtNombre, txtMarca, txtCategoria, txtPrecio, txtCantidad;
+
 
     public GestionProductos(SistemaGestion sistema) {
         this.sistema = sistema;
@@ -18,9 +19,7 @@ public class GestionProductos extends JFrame {
         setLocationRelativeTo(null);
 
         modelProductos = new DefaultListModel<>();
-        for (Producto p : sistema.getProductos()) {
-            modelProductos.addElement(p);
-        }
+        actualizarListaProductos();
 
         listaProductos = new JList<>(modelProductos);
         add(new JScrollPane(listaProductos), BorderLayout.CENTER);
@@ -36,6 +35,27 @@ public class GestionProductos extends JFrame {
         JButton btnVolver = new JButton("Volver");
         btnVolver.addActionListener(e -> dispose());
         add(btnVolver, BorderLayout.SOUTH);
+    }
+
+    private void actualizarListaProductos() {
+        modelProductos.clear();
+        try {
+            ResultSet rs = DatabaseConnection.getAllProducts();
+            while (rs.next()) {
+                Producto p = new Producto(
+                        rs.getInt("id"),
+                        rs.getString("nombre"),
+                        rs.getString("marca"),
+                        rs.getString("categoria"),
+                        rs.getDouble("precio"),
+                        rs.getInt("cantidad_disponible")
+                );
+                modelProductos.addElement(p);
+                sistema.getProductos().add(p);
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar productos: " + e.getMessage());
+        }
     }
 
     private void mostrarFormularioNuevo() {
@@ -56,17 +76,19 @@ public class GestionProductos extends JFrame {
         btnGuardar.addActionListener(e -> {
             try {
                 Producto nuevoProducto = new Producto(
+                        -1,
                         campos[0].getText(),
                         campos[1].getText(),
                         campos[2].getText(),
                         Double.parseDouble(campos[3].getText()),
                         Integer.parseInt(campos[4].getText())
                 );
+                DatabaseConnection.registerProduct(nuevoProducto);
                 sistema.getProductos().add(nuevoProducto);
-                modelProductos.addElement(nuevoProducto);
+                actualizarListaProductos();
                 dialog.dispose();
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(dialog, "Error en los datos numéricos");
+            } catch (NumberFormatException | SQLException ex) {
+                JOptionPane.showMessageDialog(dialog, "Error en los datos numéricos o al guardar: " + ex.getMessage());
             }
         });
 
@@ -103,21 +125,25 @@ public class GestionProductos extends JFrame {
                     p.setCategoria(campos[2].getText());
                     p.setPrecio(Double.parseDouble(campos[3].getText()));
                     p.setCantidadDisponible(Integer.parseInt(campos[4].getText()));
-                    modelProductos.clear();
-                    for (Producto producto : sistema.getProductos()) {
-                        modelProductos.addElement(producto);
-                    }
+                    DatabaseConnection.updateProduct(p);
+                    actualizarListaProductos();
                     dialog.dispose();
-                } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(dialog, "Error en los datos numéricos");
+                } catch (NumberFormatException | SQLException ex) {
+                    JOptionPane.showMessageDialog(dialog, "Error en los datos numéricos o al guardar: " + ex.getMessage());
                 }
             });
 
             JButton btnEliminar = new JButton("Eliminar");
-            btnEliminar.addActionListener(e -> {
-                sistema.getProductos().remove(p);
-                modelProductos.removeElement(p);
-                dialog.dispose();
+            btnEliminar.addActionListener(event -> {
+                try {
+                    DatabaseConnection.deleteProduct(p.getId());
+                    sistema.getProductos().remove(p);
+                    modelProductos.removeElement(p);
+                    dialog.dispose();
+                    actualizarListaProductos();
+                } catch (SQLException error) {
+                    JOptionPane.showMessageDialog(dialog, "Error al eliminar producto: " + error.getMessage());
+                }
             });
 
             dialog.add(btnGuardar);

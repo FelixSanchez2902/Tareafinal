@@ -2,8 +2,9 @@ package Final;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
-import java.util.ArrayList;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 
 public class GestionUsuarios extends JFrame {
     private SistemaGestion sistema;
@@ -18,9 +19,7 @@ public class GestionUsuarios extends JFrame {
         setLocationRelativeTo(null);
 
         modelUsuarios = new DefaultListModel<>();
-        for (Usuario u : sistema.getUsuarios()) {
-            modelUsuarios.addElement(u);
-        }
+        actualizarListaUsuarios();
 
         listaUsuarios = new JList<>(modelUsuarios);
         add(new JScrollPane(listaUsuarios), BorderLayout.CENTER);
@@ -58,6 +57,27 @@ public class GestionUsuarios extends JFrame {
         listaUsuarios.addListSelectionListener(e -> mostrarDetalles());
     }
 
+    private void actualizarListaUsuarios() {
+        modelUsuarios.clear();
+        try {
+            ResultSet rs = DatabaseConnection.getAllUsers();
+            while (rs.next()) {
+                Usuario u = new Usuario(
+                        rs.getString("nombre_usuario"),
+                        rs.getString("nombre"),
+                        rs.getString("apellido"),
+                        rs.getString("telefono"),
+                        rs.getString("correo"),
+                        "" // Contraseña no se muestra
+                );
+                modelUsuarios.addElement(u);
+                sistema.getUsuarios().add(u);
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error al cargar usuarios: " + e.getMessage());
+        }
+    }
+
     private void mostrarDetalles() {
         Usuario u = listaUsuarios.getSelectedValue();
         if (u != null) {
@@ -71,28 +91,36 @@ public class GestionUsuarios extends JFrame {
     private void guardarCambios() {
         Usuario u = listaUsuarios.getSelectedValue();
         if (u != null) {
-            u.setNombre(txtNombre.getText());
-            u.setApellido(txtApellido.getText());
-            u.setTelefono(txtTelefono.getText());
-            u.setCorreo(txtCorreo.getText());
-            modelUsuarios.clear();
-            for (Usuario usuario : sistema.getUsuarios()) {
-                modelUsuarios.addElement(usuario);
+            try {
+                u.setNombre(txtNombre.getText());
+                u.setApellido(txtApellido.getText());
+                u.setTelefono(txtTelefono.getText());
+                u.setCorreo(txtCorreo.getText());
+                DatabaseConnection.updateUser(u); // Guardar en la base de datos
+                actualizarListaUsuarios(); // Refrescar la lista
+                JOptionPane.showMessageDialog(this, "Cambios guardados");
+            } catch (SQLException e) {
+                JOptionPane.showMessageDialog(this, "Error al guardar cambios: " + e.getMessage());
             }
-            JOptionPane.showMessageDialog(this, "Cambios guardados");
         }
     }
 
     private void eliminarUsuario() {
         Usuario u = listaUsuarios.getSelectedValue();
         if (u != null) {
-            sistema.getUsuarios().remove(u);
-            modelUsuarios.removeElement(u);
-            txtNombre.setText("");
-            txtApellido.setText("");
-            txtTelefono.setText("");
-            txtCorreo.setText("");
-            JOptionPane.showMessageDialog(this, "Usuario eliminado");
+            try {
+                DatabaseConnection.deleteUser(u.getNombreUsuario()); // Eliminar de la base de datos
+                sistema.getUsuarios().remove(u); // Eliminar del ArrayList
+                modelUsuarios.removeElement(u);
+                txtNombre.setText("");
+                txtApellido.setText("");
+                txtTelefono.setText("");
+                txtCorreo.setText("");
+                JOptionPane.showMessageDialog(this, "Usuario eliminado");
+                actualizarListaUsuarios(); // Refrescar la lista
+            } catch (SQLException e) {
+                JOptionPane.showMessageDialog(this, "Error al eliminar usuario: " + e.getMessage());
+            }
         }
     }
 }
